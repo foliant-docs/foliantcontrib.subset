@@ -1,12 +1,46 @@
 '''CLI extension for the ``subset`` command.'''
 
-import re
+import oyaml as yaml
 from pathlib import Path
+from typing import Dict
 from logging import DEBUG, WARNING
 from cliar import Cliar, set_arg_map, set_metavars, set_help
+from foliant.config import Parser
 
 
 class Cli(Cliar):
+    def _neutralize_special_characters(self, serialized_yaml: str) -> str:
+        serialized_yaml = serialized_yaml.replace('!', 'SUBSET_NEUTRALIZED_EXCLAMATION_')
+        serialized_yaml = serialized_yaml.replace('&', 'SUBSET_NEUTRALIZED_AMPERSAND_')
+        serialized_yaml = serialized_yaml.replace('*', 'SUBSET_NEUTRALIZED_ASTERISK_')
+
+        return serialized_yaml
+
+    def _restore_special_characters(self, serialized_yaml: str) -> str:
+        serialized_yaml = serialized_yaml.replace('SUBSET_NEUTRALIZED_EXCLAMATION_', '!')
+        serialized_yaml = serialized_yaml.replace('SUBSET_NEUTRALIZED_AMPERSAND_', '&')
+        serialized_yaml = serialized_yaml.replace('SUBSET_NEUTRALIZED_ASTERISK_', '*')
+
+        return serialized_yaml
+
+    def _get_whole_project_partial_config(self, project_dir_path: Path, config_file_name: str) -> dict:
+        with open(project_dir_path / config_file_name, encoding='utf8') as whole_project_partial_config_file:
+            whole_project_partial_config_str = whole_project_partial_config_file.read()
+
+        whole_project_partial_config_str = self._neutralize_special_characters(whole_project_partial_config_str)
+        whole_project_partial_config = yaml.load(whole_project_partial_config_str)
+
+        return whole_project_partial_config
+
+    def _get_subset_partial_config(self, subset_dir_path: Path, config_file_name: str) -> dict:
+        with open(subset_dir_path / config_file_name, encoding='utf8') as subset_partial_config_file:
+            subset_partial_config_str = subset_partial_config_file.read()
+
+        subset_partial_config_str = self._neutralize_special_characters(subset_partial_config_str)
+        subset_partial_config = yaml.load(subset_partial_config_str)
+
+        return subset_partial_config
+
     def _get_subset_dir_path(self, src_dir_path: Path, user_defined_path_str: str) -> Path:
         self.logger.debug(f'User-defined subset path: {user_defined_path_str}')
 
@@ -15,7 +49,10 @@ class Cli(Cliar):
         if src_dir_path.resolve() in subset_dir_path.resolve().parents \
             or src_dir_path.resolve() == subset_dir_path.resolve():
 
-            self.logger.debug('The project source directory is included into user-defined subpath')
+            self.logger.debug(
+                f'The project source directory {src_dir_path} is included ' +
+                f'into the user-defined subset path {user_defined_path_str}'
+            )
 
         else:
             subset_dir_path = src_dir_path / subset_dir_path
@@ -23,132 +60,136 @@ class Cli(Cliar):
             if src_dir_path.resolve() in subset_dir_path.resolve().parents \
                 or src_dir_path.resolve() == subset_dir_path.resolve():
 
-                self.logger.debug('The project source directory is not included into user-defined subpath')
+                self.logger.debug(
+                    f'The project source directory {src_dir_path} is not included '
+                    f'into the user-defined subset path {user_defined_path_str}'
+                )
 
             else:
-                self.logger.critical('User-defined subpath is outside the project source directory')
+                error_message = f'Subset path {subset_dir_path} is outside the project source directory'
 
-                raise RuntimeError('User-defined subpath is outside the project source directory')
+                self.logger.critical(error_message)
+
+                raise RuntimeError(error_message)
 
         if subset_dir_path.is_dir():
             return subset_dir_path
 
         else:
-            self.logger.critical('User-defined subpath is not an existing directory')
+            error_message = f'Subset path {subset_dir_path} is not an existing directory'
 
-            raise RuntimeError('User-defined subpath is not an existing directory')
+            self.logger.critical(error_message)
 
-    def _rewrite_chapters_paths(self, partial_config: str, src_dir_path: Path, subset_dir_path: Path) -> str:
-        chapter_line_pattern = re.compile(
-            r'^(\s+\-\s+.+\.md)\s*$',
-            flags=re.MULTILINE
-        )
+            raise RuntimeError(error_message)
 
-        chapter_line_components_pattern = re.compile(
-            r'^(?P<indentation>\s+)\-\s+(?P<chapter_title>.+\:\s+)?(?P<chapter_file_path>[^\:]+\.md)\s*$',
-            flags=re.MULTILINE
-        )
+    def _get_chapters_with_rewritten_paths(
+        self,
+        chapters: Dict,
+        src_dir_path: Path,
+        subset_dir_path: Path
+    ) -> Dict:
+        def _recursive_process_chapters(chapters_subset):
+            if isinstance(chapters_subset, dict):
+                new_chapters_subset = {}
+                for key, value in chapters_subset.items():
+                    new_chapters_subset[key] = _recursive_process_chapters(value)
 
-        partial_config_components = chapter_line_pattern.split(partial_config)
+            elif isinstance(chapters_subset, list):
+                new_chapters_subset = []
+                for item in chapters_subset:
+                    new_chapters_subset.append(_recursive_process_chapters(item))
 
-        new_partial_config = ''
-
-        for partial_config_component in partial_config_components:
-            chapter_line = chapter_line_components_pattern.fullmatch(partial_config_component)
-
-            if chapter_line:
-                indentation = chapter_line.group('indentation')
-                chapter_title = chapter_line.group('chapter_title')
-                chapter_file_path = chapter_line.group('chapter_file_path')
-
-                self.logger.debug(
-                    'Processing the line of chapters section; ' +
-                    f'indentation: "{indentation}", ' +
-                    f'chapter title: {chapter_title}, ' +
-                    f'Markdown file path: {chapter_file_path}'
-                )
-
-                rewritten_chapter_file_path = (subset_dir_path / chapter_file_path).relative_to(src_dir_path)
-
-                self.logger.debug(f'Rewriting Markdown file path with: {rewritten_chapter_file_path}')
-
-                if chapter_title:
-                    new_partial_config += f'{indentation}- {chapter_title}{rewritten_chapter_file_path}'
-
-                else:
-                    new_partial_config += f'{indentation}- {rewritten_chapter_file_path}'
+            elif isinstance(chapters_subset, str):
+                chapter_file_path_str = chapters_subset
+                rewritten_chapter_file_path = (subset_dir_path / chapter_file_path_str).relative_to(src_dir_path)
+                new_chapters_subset = str(rewritten_chapter_file_path)
 
             else:
-                new_partial_config += partial_config_component
+                new_chapters_subset = chapters_subset
 
-        return new_partial_config
+            return new_chapters_subset
+
+        new_chapters = _recursive_process_chapters(chapters)
+
+        return new_chapters
 
     @set_arg_map(
         {
-            'project_dir': 'project-dir',
-            'src_dir': 'src-dir',
             'no_rewrite_paths': 'no-rewrite',
             'config_file_name': 'config'
         }
     )
-    @set_metavars({'pathstr': 'SUBPATH'})
+    @set_metavars({'subpathstr': 'SUBPATH'})
     @set_help(
         {
             'SUBPATH': "Path to the subset of the Foliant project",
-            'project_dir': "Path to the Foliant project root directory, default './'",
-            'src_dir': "Path to the Foliant project source directory, default './src/'",
-            'no_rewrite_paths': "Do not rewrite the paths of Markdown files in the partial config",
+            'project_dir_path': 'Path to the Foliant project',
             'config_file_name': "Name of config file of the Foliant project, default 'foliant.yml'",
+            'no_rewrite_paths': "Do not rewrite the paths of Markdown files in the subset partial config",
             'debug': "Log all events during build. If not set, only warnings and errors are logged"
         }
     )
     def subset(
         self,
-        pathstr,
-        project_dir='./',
-        src_dir='./src/',
-        no_rewrite_paths=False,
+        subpathstr,
+        project_dir_path=Path('.'),
         config_file_name='foliant.yml',
+        no_rewrite_paths=False,
         debug=False
     ):
-        '''Generate subset config file using partial data from SUBPATH.'''
+        '''Generate the config file to build the project subset from SUBPATH.'''
 
         self.logger.setLevel(DEBUG if debug else WARNING)
 
         self.logger.info('Processing started')
+        self.logger.debug(f'Config file name: {config_file_name}')
 
-        project_dir_path = Path(project_dir).expanduser()
-        src_dir_path = Path(src_dir).expanduser()
+        whole_project_partial_config = self._get_whole_project_partial_config(project_dir_path, config_file_name)
 
-        self.logger.debug(f'Project root directory: {project_dir_path}')
+        self.logger.debug(f'Partial config of the whole project: {whole_project_partial_config}')
+
+        src_dir_path = Path(
+            {
+                **Parser(project_dir_path, config_file_name, self.logger)._defaults,
+                **whole_project_partial_config
+            }['src_dir']
+        ).expanduser()
+
         self.logger.debug(f'Project source directory: {src_dir_path}')
 
-        subset_dir_path = self._get_subset_dir_path(src_dir_path, pathstr)
+        subset_dir_path = self._get_subset_dir_path(src_dir_path, subpathstr)
 
         self.logger.debug(f'Subset directory path: {subset_dir_path}')
 
-        common_config_file_name = config_file_name + '.common'
+        subset_partial_config = self._get_subset_partial_config(subset_dir_path, config_file_name)
 
-        self.logger.debug(f'Reading the common config part from the file {common_config_file_name}')
+        self.logger.debug(f'Subset partial config: {subset_partial_config}')
 
-        with open(project_dir_path / common_config_file_name, encoding='utf8') as common_config_file:
-            common_config = common_config_file.read()
+        if not no_rewrite_paths and subset_partial_config['chapters']:
+            subset_partial_config['chapters'] = self._get_chapters_with_rewritten_paths(
+                subset_partial_config['chapters'],
+                src_dir_path,
+                subset_dir_path
+            )
 
-        partial_config_file_name = config_file_name + '.partial'
+        project_subset_config = {**whole_project_partial_config, **subset_partial_config}
 
-        self.logger.debug(f'Reading the partial config from the file {partial_config_file_name}')
+        self.logger.debug(f'Project subset config: {project_subset_config}')
 
-        with open(subset_dir_path / partial_config_file_name, encoding='utf8') as partial_config_file:
-            partial_config = partial_config_file.read()
+        project_subset_config_str = str(
+            yaml.dump(
+                project_subset_config,
+                encoding='utf-8',
+                allow_unicode=True,
+                default_flow_style=False),
+            encoding='utf-8'
+        ) 
 
-        if not no_rewrite_paths:
-            partial_config = self._rewrite_chapters_paths(partial_config, src_dir_path, subset_dir_path)
+        project_subset_config_str = self._restore_special_characters(project_subset_config_str)
 
-        subset_config = partial_config + '\n\n' + common_config
-
-        self.logger.debug(f'Writing the subset config to the file {config_file_name}')
-
-        with open(project_dir_path / config_file_name, 'w', encoding='utf8') as subset_config_file:
-            subset_config_file.write(subset_config)
+        with open(
+            project_dir_path / (config_file_name + '.subset'), 'w', encoding='utf8'
+        ) as project_subset_config_file:
+            project_subset_config_file.write(project_subset_config_str)
 
         self.logger.info('Processing finished')

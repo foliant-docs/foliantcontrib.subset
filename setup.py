@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-SHORT_DESCRIPTION = 'Extension for Foliant documentation generator to configure a subset of the Foliant project.'
+SHORT_DESCRIPTION = 'Extension for Foliant documentation generator to build subset of Foliant projects.'
 
 try:
     with open('README.md', encoding='utf8') as readme:
@@ -24,7 +24,8 @@ setup(
     license='MIT',
     platforms='any',
     install_requires=[
-        'foliant>=1.0.5'
+        'foliant>=1.0.5',
+        'oyaml'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
