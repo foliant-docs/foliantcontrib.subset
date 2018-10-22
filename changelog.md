@@ -1,3 +1,3 @@
-# 1.0.1 (under development)
+# 1.0.1
 
--   Parse YAML fairly.
+-   Parse YAML fairly. Merge config files recursively.
