@@ -233,12 +233,14 @@ class Cli(Cliar):
         project_subset_config_str = str(
             yaml.dump(
                 project_subset_config,
-                default_flow_style=False,
                 allow_unicode=True,
-                line_break=False,
-                encoding='utf-8'),
+                encoding='utf-8',
+                default_flow_style=False,
+                indent=4,
+                width=1024,
+            ),
             encoding='utf-8'
-        ) 
+        )
 
         project_subset_config_str = self._restore_special_characters(project_subset_config_str)
 
