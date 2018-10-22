@@ -1,6 +1,7 @@
 '''CLI extension for the ``subset`` command.'''
 
 import oyaml as yaml
+from uuid import uuid1
 from pathlib import Path
 from typing import Dict
 from logging import DEBUG, WARNING
@@ -10,21 +11,23 @@ from foliant.config import Parser
 
 class Cli(Cliar):
     def _neutralize_special_characters(self, serialized_yaml: str) -> str:
-        serialized_yaml = serialized_yaml.replace('!', 'SUBSET_NEUTRALIZED_EXCLAMATION_')
-        serialized_yaml = serialized_yaml.replace('&', 'SUBSET_NEUTRALIZED_AMPERSAND_')
-        serialized_yaml = serialized_yaml.replace('*', 'SUBSET_NEUTRALIZED_ASTERISK_')
+        serialized_yaml = serialized_yaml.replace('!', f'EXCLAMATION_{self._neutralization_uuid}_')
+        serialized_yaml = serialized_yaml.replace('&', f'AMPERSAND_{self._neutralization_uuid}_')
+        serialized_yaml = serialized_yaml.replace('*', f'ASTERISK_{self._neutralization_uuid}_')
 
         return serialized_yaml
 
     def _restore_special_characters(self, serialized_yaml: str) -> str:
-        serialized_yaml = serialized_yaml.replace('SUBSET_NEUTRALIZED_EXCLAMATION_', '!')
-        serialized_yaml = serialized_yaml.replace('SUBSET_NEUTRALIZED_AMPERSAND_', '&')
-        serialized_yaml = serialized_yaml.replace('SUBSET_NEUTRALIZED_ASTERISK_', '*')
+        serialized_yaml = serialized_yaml.replace(f'EXCLAMATION_{self._neutralization_uuid}_', '!')
+        serialized_yaml = serialized_yaml.replace(f'AMPERSAND_{self._neutralization_uuid}_', '&')
+        serialized_yaml = serialized_yaml.replace(f'ASTERISK_{self._neutralization_uuid}_', '*')
 
         return serialized_yaml
 
-    def _get_whole_project_partial_config(self, project_dir_path: Path, config_file_name: str) -> dict:
-        with open(project_dir_path / config_file_name, encoding='utf8') as whole_project_partial_config_file:
+    def _get_whole_project_partial_config(self) -> dict:
+        with open(
+            self._project_dir_path / self._config_file_name, encoding='utf8'
+        ) as whole_project_partial_config_file:
             whole_project_partial_config_str = whole_project_partial_config_file.read()
 
         whole_project_partial_config_str = self._neutralize_special_characters(whole_project_partial_config_str)
@@ -32,8 +35,8 @@ class Cli(Cliar):
 
         return whole_project_partial_config
 
-    def _get_subset_partial_config(self, subset_dir_path: Path, config_file_name: str) -> dict:
-        with open(subset_dir_path / config_file_name, encoding='utf8') as subset_partial_config_file:
+    def _get_subset_partial_config(self) -> dict:
+        with open(self._subset_dir_path / self._config_file_name, encoding='utf8') as subset_partial_config_file:
             subset_partial_config_str = subset_partial_config_file.read()
 
         subset_partial_config_str = self._neutralize_special_characters(subset_partial_config_str)
@@ -41,27 +44,31 @@ class Cli(Cliar):
 
         return subset_partial_config
 
-    def _get_subset_dir_path(self, src_dir_path: Path, user_defined_path_str: str) -> Path:
+    def _get_subset_dir_path(self, user_defined_path_str: str) -> Path:
         self.logger.debug(f'User-defined subset path: {user_defined_path_str}')
 
         subset_dir_path = Path(user_defined_path_str).expanduser()
 
-        if src_dir_path.resolve() in subset_dir_path.resolve().parents \
-            or src_dir_path.resolve() == subset_dir_path.resolve():
-
+        if (
+            self._src_dir_path.resolve() in subset_dir_path.resolve().parents
+            or
+            self._src_dir_path.resolve() == subset_dir_path.resolve()
+        ):
             self.logger.debug(
                 f'The project source directory {src_dir_path} is included ' +
                 f'into the user-defined subset path {user_defined_path_str}'
             )
 
         else:
-            subset_dir_path = src_dir_path / subset_dir_path
+            subset_dir_path = self._src_dir_path / subset_dir_path
 
-            if src_dir_path.resolve() in subset_dir_path.resolve().parents \
-                or src_dir_path.resolve() == subset_dir_path.resolve():
-
+            if (
+                self._src_dir_path.resolve() in subset_dir_path.resolve().parents
+                or
+                self._src_dir_path.resolve() == subset_dir_path.resolve()
+            ):
                 self.logger.debug(
-                    f'The project source directory {src_dir_path} is not included '
+                    f'The project source directory {self._src_dir_path} is not included '
                     f'into the user-defined subset path {user_defined_path_str}'
                 )
 
@@ -82,12 +89,7 @@ class Cli(Cliar):
 
             raise RuntimeError(error_message)
 
-    def _get_chapters_with_rewritten_paths(
-        self,
-        chapters: Dict,
-        src_dir_path: Path,
-        subset_dir_path: Path
-    ) -> Dict:
+    def _get_chapters_with_rewritten_paths(self, chapters: Dict) -> Dict:
         def _recursive_process_chapters(chapters_subset):
             if isinstance(chapters_subset, dict):
                 new_chapters_subset = {}
@@ -101,7 +103,16 @@ class Cli(Cliar):
 
             elif isinstance(chapters_subset, str):
                 chapter_file_path_str = chapters_subset
-                rewritten_chapter_file_path = (subset_dir_path / chapter_file_path_str).relative_to(src_dir_path)
+
+                rewritten_chapter_file_path = (
+                    self._subset_dir_path / chapter_file_path_str
+                ).relative_to(self._src_dir_path)
+
+                self.logger.debug(
+                    'Rewriting Markdown file path; ' +
+                    f'source: {chapter_file_path_str}, target: {rewritten_chapter_file_path}'
+                )
+
                 new_chapters_subset = str(rewritten_chapter_file_path)
 
             else:
@@ -142,53 +153,97 @@ class Cli(Cliar):
         self.logger.setLevel(DEBUG if debug else WARNING)
 
         self.logger.info('Processing started')
-        self.logger.debug(f'Config file name: {config_file_name}')
 
-        whole_project_partial_config = self._get_whole_project_partial_config(project_dir_path, config_file_name)
+        self._project_dir_path = project_dir_path
+        self._config_file_name = config_file_name
+
+        self.logger.debug(
+            f'Project directory path: {self._project_dir_path}, ' +
+            f'config file name: {self._config_file_name}'
+        )
+
+        self._neutralization_uuid = str(uuid1()).replace('-', '')
+
+        self.logger.debug(f'UUID to temporarily neutralize special characters: {self._neutralization_uuid}')
+
+        whole_project_partial_config = self._get_whole_project_partial_config()
 
         self.logger.debug(f'Partial config of the whole project: {whole_project_partial_config}')
 
-        src_dir_path = Path(
+        self._src_dir_path = Path(
             {
                 **Parser(project_dir_path, config_file_name, self.logger)._defaults,
                 **whole_project_partial_config
             }['src_dir']
         ).expanduser()
 
-        self.logger.debug(f'Project source directory: {src_dir_path}')
+        self.logger.debug(f'Project source directory: {self._src_dir_path}')
 
-        subset_dir_path = self._get_subset_dir_path(src_dir_path, subpathstr)
+        self._subset_dir_path = self._get_subset_dir_path(subpathstr)
 
-        self.logger.debug(f'Subset directory path: {subset_dir_path}')
+        self.logger.debug(f'Subset directory path: {self._subset_dir_path}')
 
-        subset_partial_config = self._get_subset_partial_config(subset_dir_path, config_file_name)
+        subset_partial_config = self._get_subset_partial_config()
 
         self.logger.debug(f'Subset partial config: {subset_partial_config}')
 
         if not no_rewrite_paths and subset_partial_config['chapters']:
             subset_partial_config['chapters'] = self._get_chapters_with_rewritten_paths(
-                subset_partial_config['chapters'],
-                src_dir_path,
-                subset_dir_path
+                subset_partial_config['chapters']
             )
 
-        project_subset_config = {**whole_project_partial_config, **subset_partial_config}
+        def _recursive_merge_dicts(target_dict_subset, source_dict_subset):
+            key = None
+
+            if isinstance(target_dict_subset, dict):
+                if isinstance(source_dict_subset, dict):
+                    for key in source_dict_subset:
+                        if key in target_dict_subset:
+                            target_dict_subset[key] = _recursive_merge_dicts(
+                                target_dict_subset[key],
+                                source_dict_subset[key]
+                            )
+
+                        else:
+                            target_dict_subset[key] = source_dict_subset[key]
+
+                else:
+                    error_message = f'Cannot merge non-dict {source_dict_subset} into dict {target_dict_subset}'
+
+                    self.logger.critical(error_message)
+
+                    raise TypeError(error_message)
+
+            elif isinstance(target_dict_subset, list):
+                if isinstance(source_dict_subset, list):
+                    target_dict_subset.extend(source_dict_subset)
+
+                else:
+                    target_dict_subset.append(source_dict_subset)
+
+            else:
+                target_dict_subset = source_dict_subset
+
+            return target_dict_subset
+
+        project_subset_config = _recursive_merge_dicts(whole_project_partial_config, subset_partial_config)
 
         self.logger.debug(f'Project subset config: {project_subset_config}')
 
         project_subset_config_str = str(
             yaml.dump(
                 project_subset_config,
-                encoding='utf-8',
+                default_flow_style=False,
                 allow_unicode=True,
-                default_flow_style=False),
+                line_break=False,
+                encoding='utf-8'),
             encoding='utf-8'
         ) 
 
         project_subset_config_str = self._restore_special_characters(project_subset_config_str)
 
         with open(
-            project_dir_path / (config_file_name + '.subset'), 'w', encoding='utf8'
+            self._project_dir_path / (self._config_file_name + '.subset'), 'w', encoding='utf8'
         ) as project_subset_config_file:
             project_subset_config_file.write(project_subset_config_str)
 
