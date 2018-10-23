@@ -33,11 +33,11 @@ usage: foliant subset [-h] [-p PROJECT_DIR_PATH] [-c CONFIG] [-n] [-d] SUBPATH
 Generate the config file to build the project subset from SUBPATH.
 
 positional arguments:
-  SUBPATH
+  SUBPATH               Path to the subset of the Foliant project
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PROJECT_DIR_PATH, --project-dir-path PROJECT_DIR_PATH
+  -p PROJECT_DIR, --project-dir PROJECT_DIR
                         Path to the Foliant project
   -c CONFIG, --config CONFIG
                         Name of config file of the Foliant project, default 'foliant.yml'

@@ -131,10 +131,10 @@ class Cli(Cliar):
             'no_rewrite_paths': 'no-rewrite'
         }
     )
-    @set_metavars({'subpathstr': 'SUBPATH'})
+    @set_metavars({'subpath': 'SUBPATH'})
     @set_help(
         {
-            'SUBPATH': "Path to the subset of the Foliant project",
+            'subpath': "Path to the subset of the Foliant project",
             'project_dir_path': 'Path to the Foliant project',
             'config_file_name': "Name of config file of the Foliant project, default 'foliant.yml'",
             'no_rewrite_paths': "Do not rewrite the paths of Markdown files in the subset partial config",
@@ -143,7 +143,7 @@ class Cli(Cliar):
     )
     def subset(
         self,
-        subpathstr,
+        subpath,
         project_dir_path=Path('.'),
         config_file_name='foliant.yml',
         no_rewrite_paths=False,
@@ -180,7 +180,7 @@ class Cli(Cliar):
 
         self.logger.debug(f'Project source directory: {self._src_dir_path}')
 
-        self._subset_dir_path = self._get_subset_dir_path(subpathstr)
+        self._subset_dir_path = self._get_subset_dir_path(subpath)
 
         self.logger.debug(f'Subset directory path: {self._subset_dir_path}')
 

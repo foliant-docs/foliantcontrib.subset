@@ -1,3 +1,7 @@
+# 1.0.4
+
+-   Tidy up command line arguments one more time.
+
 # 1.0.3
 
 -   Tidy up command line arguments.
