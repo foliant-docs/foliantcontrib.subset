@@ -1,3 +1,7 @@
+# 1.0.3
+
+-   Tidy up command line arguments.
+
 # 1.0.2
 
 -   Fix a bug with object names.
