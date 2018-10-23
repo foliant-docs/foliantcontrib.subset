@@ -55,7 +55,7 @@ class Cli(Cliar):
             self._src_dir_path.resolve() == subset_dir_path.resolve()
         ):
             self.logger.debug(
-                f'The project source directory {src_dir_path} is included ' +
+                f'The project source directory {self._src_dir_path} is included ' +
                 f'into the user-defined subset path {user_defined_path_str}'
             )
 
@@ -172,7 +172,7 @@ class Cli(Cliar):
 
         self._src_dir_path = Path(
             {
-                **Parser(project_dir_path, config_file_name, self.logger)._defaults,
+                **Parser(self._project_dir_path, self._config_file_name, self.logger)._defaults,
                 **whole_project_partial_config
             }['src_dir']
         ).expanduser()
