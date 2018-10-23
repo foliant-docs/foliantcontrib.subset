@@ -126,8 +126,9 @@ class Cli(Cliar):
 
     @set_arg_map(
         {
-            'no_rewrite_paths': 'no-rewrite',
-            'config_file_name': 'config'
+            'project_dir_path': 'project-dir',
+            'config_file_name': 'config',
+            'no_rewrite_paths': 'no-rewrite'
         }
     )
     @set_metavars({'subpathstr': 'SUBPATH'})
