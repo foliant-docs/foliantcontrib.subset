@@ -1,3 +1,7 @@
+# 1.0.5
+
+-   Do not use `yaml` alias for `oyaml` module to prevent possible influence of this overriding on other parts of code.
+
 # 1.0.4
 
 -   Tidy up command line arguments one more time.
