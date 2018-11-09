@@ -1,6 +1,6 @@
 '''CLI extension for the ``subset`` command.'''
 
-import oyaml as yaml
+import oyaml
 from uuid import uuid1
 from pathlib import Path
 from typing import Dict
@@ -31,7 +31,7 @@ class Cli(Cliar):
             whole_project_partial_config_str = whole_project_partial_config_file.read()
 
         whole_project_partial_config_str = self._neutralize_special_characters(whole_project_partial_config_str)
-        whole_project_partial_config = yaml.load(whole_project_partial_config_str)
+        whole_project_partial_config = oyaml.load(whole_project_partial_config_str)
 
         return whole_project_partial_config
 
@@ -40,7 +40,7 @@ class Cli(Cliar):
             subset_partial_config_str = subset_partial_config_file.read()
 
         subset_partial_config_str = self._neutralize_special_characters(subset_partial_config_str)
-        subset_partial_config = yaml.load(subset_partial_config_str)
+        subset_partial_config = oyaml.load(subset_partial_config_str)
 
         return subset_partial_config
 
@@ -232,7 +232,7 @@ class Cli(Cliar):
         self.logger.debug(f'Project subset config: {project_subset_config}')
 
         project_subset_config_str = str(
-            yaml.dump(
+            oyaml.dump(
                 project_subset_config,
                 allow_unicode=True,
                 encoding='utf-8',
