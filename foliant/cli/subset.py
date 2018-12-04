@@ -5,11 +5,12 @@ from uuid import uuid1
 from pathlib import Path
 from typing import Dict
 from logging import DEBUG, WARNING
-from cliar import Cliar, set_arg_map, set_metavars, set_help
+from cliar import set_arg_map, set_metavars, set_help
 from foliant.config import Parser
+from foliant.cli.base import BaseCli
 
 
-class Cli(Cliar):
+class Cli(BaseCli):
     def _neutralize_special_characters(self, serialized_yaml: str) -> str:
         serialized_yaml = serialized_yaml.replace('!', f'EXCLAMATION_{self._neutralization_uuid}_')
         serialized_yaml = serialized_yaml.replace('&', f'AMPERSAND_{self._neutralization_uuid}_')
@@ -188,7 +189,7 @@ class Cli(Cliar):
 
         self.logger.debug(f'Subset partial config: {subset_partial_config}')
 
-        if not no_rewrite_paths and subset_partial_config['chapters']:
+        if not no_rewrite_paths and 'chapters' in subset_partial_config:
             subset_partial_config['chapters'] = self._get_chapters_with_rewritten_paths(
                 subset_partial_config['chapters']
             )
