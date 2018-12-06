@@ -39,8 +39,6 @@ class Cli(BaseCli):
         return whole_project_partial_config
 
     def _get_subset_partial_config(self) -> OrderedDict:
-        import oyaml
-
         with open(self._subset_dir_path / self._config_file_name, encoding='utf8') as subset_partial_config_file:
             subset_partial_config_str = subset_partial_config_file.read()
 

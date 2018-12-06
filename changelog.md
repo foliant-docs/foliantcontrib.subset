@@ -1,3 +1,7 @@
+# 1.0.8
+
+-   Remove forgotten unnecessary import.
+
 # 1.0.7
 
 -   Move the imports of the `oyaml` module directly into the methods that use it.
