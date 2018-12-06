@@ -1,9 +1,8 @@
 '''CLI extension for the ``subset`` command.'''
 
-import oyaml
 from uuid import uuid1
 from pathlib import Path
-from typing import Dict
+from collections import OrderedDict
 from logging import DEBUG, WARNING
 from cliar import set_arg_map, set_metavars, set_help
 from foliant.config import Parser
@@ -25,23 +24,31 @@ class Cli(BaseCli):
 
         return serialized_yaml
 
-    def _get_whole_project_partial_config(self) -> dict:
+    def _get_whole_project_partial_config(self) -> OrderedDict:
         with open(
             self._project_dir_path / self._config_file_name, encoding='utf8'
         ) as whole_project_partial_config_file:
             whole_project_partial_config_str = whole_project_partial_config_file.read()
 
         whole_project_partial_config_str = self._neutralize_special_characters(whole_project_partial_config_str)
-        whole_project_partial_config = oyaml.load(whole_project_partial_config_str)
+
+        from oyaml import load
+
+        whole_project_partial_config = load(whole_project_partial_config_str)
 
         return whole_project_partial_config
 
-    def _get_subset_partial_config(self) -> dict:
+    def _get_subset_partial_config(self) -> OrderedDict:
+        import oyaml
+
         with open(self._subset_dir_path / self._config_file_name, encoding='utf8') as subset_partial_config_file:
             subset_partial_config_str = subset_partial_config_file.read()
 
         subset_partial_config_str = self._neutralize_special_characters(subset_partial_config_str)
-        subset_partial_config = oyaml.load(subset_partial_config_str)
+
+        from oyaml import load
+
+        subset_partial_config = load(subset_partial_config_str)
 
         return subset_partial_config
 
@@ -90,7 +97,7 @@ class Cli(BaseCli):
 
             raise RuntimeError(error_message)
 
-    def _get_chapters_with_rewritten_paths(self, chapters: Dict) -> Dict:
+    def _get_chapters_with_rewritten_paths(self, chapters: OrderedDict) -> OrderedDict:
         def _recursive_process_chapters(chapters_subset):
             if isinstance(chapters_subset, dict):
                 new_chapters_subset = {}
@@ -232,8 +239,10 @@ class Cli(BaseCli):
 
         self.logger.debug(f'Project subset config: {project_subset_config}')
 
+        from oyaml import dump
+
         project_subset_config_str = str(
-            oyaml.dump(
+            dump(
                 project_subset_config,
                 allow_unicode=True,
                 encoding='utf-8',

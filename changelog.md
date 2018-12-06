@@ -1,3 +1,7 @@
+# 1.0.7
+
+-   Move the imports of the `oyaml` module directly into the methods that use it.
+
 # 1.0.6
 
 -   Fix a bug: check if subset partial config contains `chapters` section correctly.
