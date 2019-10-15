@@ -5,6 +5,8 @@ from pathlib import Path
 from collections import OrderedDict
 from logging import DEBUG, WARNING
 from cliar import set_arg_map, set_metavars, set_help
+from yaml import Loader
+
 from foliant.config import Parser
 from foliant.cli.base import BaseCli
 
@@ -34,7 +36,7 @@ class Cli(BaseCli):
 
         from oyaml import load
 
-        whole_project_partial_config = load(whole_project_partial_config_str)
+        whole_project_partial_config = load(whole_project_partial_config_str, Loader)
 
         return whole_project_partial_config
 
@@ -46,7 +48,7 @@ class Cli(BaseCli):
 
         from oyaml import load
 
-        subset_partial_config = load(subset_partial_config_str)
+        subset_partial_config = load(subset_partial_config_str, Loader)
 
         return subset_partial_config
 
@@ -132,9 +134,9 @@ class Cli(BaseCli):
 
     @set_arg_map(
         {
-            'project_dir_path': 'project-dir',
+            'project_dir_path': 'path',
             'config_file_name': 'config',
-            'no_rewrite_paths': 'no-rewrite'
+            'no_rewrite_paths': 'norewrite'
         }
     )
     @set_metavars({'subpath': 'SUBPATH'})
