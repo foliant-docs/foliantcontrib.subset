@@ -37,11 +37,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PROJECT_DIR, --project-dir PROJECT_DIR
+  -p PROJECT_DIR, --path PROJECT_DIR
                         Path to the Foliant project
   -c CONFIG, --config CONFIG
                         Name of config file of the Foliant project, default 'foliant.yml'
-  -n, --no-rewrite      Do not rewrite the paths of Markdown files in the subset partial config
+  -n, --norewrite       Do not rewrite the paths of Markdown files in the subset partial config
   -d, --debug           Log all events during build. If not set, only warnings and errors are logged
 ```
 

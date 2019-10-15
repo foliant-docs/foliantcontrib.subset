@@ -1,3 +1,7 @@
+# 1.0.9
+
+-   Fix incompatibilities with newer versions of modules: Cliar, PyYAML.
+
 # 1.0.8
 
 -   Remove forgotten unnecessary import.
